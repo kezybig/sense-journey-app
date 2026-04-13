@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sensejourney/backend/api"
@@ -32,30 +30,11 @@ func main() {
 		c.Next()
 	})
 
-	// 前端应用代理 - 将/app/*代理到Expo开发服务器
-	frontendURL, _ := url.Parse("http://localhost:8082")
-	proxy := httputil.NewSingleHostReverseProxy(frontendURL)
-
-	// 自定义Director函数以保留原始请求路径
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		// 保留原始请求的Host头，以便Expo正确处理
-		req.Host = frontendURL.Host
-		// 移除/app前缀，因为前端服务器期望根路径
-		req.URL.Path = req.URL.Path[len("/app"):]
-		if req.URL.Path == "" {
-			req.URL.Path = "/"
-		}
-	}
-
-	// 代理路由
-	r.Any("/app/*path", func(c *gin.Context) {
-		proxy.ServeHTTP(c.Writer, c.Request)
-	})
-
-	r.Any("/app", func(c *gin.Context) {
-		proxy.ServeHTTP(c.Writer, c.Request)
+	// 静态前端应用 - 从web-build目录提供静态文件
+	r.Static("/app", "./web-build")
+	// 重定向 /app 到 /app/
+	r.GET("/app", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/app/")
 	})
 
 	// 路由设置
@@ -158,7 +137,7 @@ func main() {
         
         <div>
             <a href="/app/" class="button">🚀 启动应用 (通过代理)</a>
-            <a href="https://gradient-criteria-cheddar.ngrok-free.dev" class="button">🔄 刷新此页面</a>
+            <a href="/" class="button">🔄 刷新此页面</a>
             <a href="http://192.168.200.185:8082" class="button">📱 局域网访问 (同一网络)</a>
             <a href="https://github.com/kezybig/sense-journey-app" class="button">💾 GitHub 仓库</a>
         </div>
