@@ -8,7 +8,7 @@ const getApiBaseUrl = () => {
   // 如果是Web平台且通过ngrok访问，使用当前ngrok隧道URL
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    if (hostname.includes('ngrok-free.dev') || hostname.includes('loca.lt')) {
+    if (hostname.includes('ngrok-free.dev') || hostname.includes('loca.lt') || hostname.includes('github.io')) {
       // 使用当前窗口的origin（协议+主机名），与API在同一域名下
       return window.location.origin;
     }
@@ -20,6 +20,26 @@ const getApiBaseUrl = () => {
   }
   // 生产环境使用相对路径
   return '';
+};
+
+// 检测是否为GitHub Pages环境
+const isGitHubPages = () => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return window.location.hostname.includes('github.io');
+  }
+  return false;
+};
+
+// GitHub Pages模拟登录响应
+const simulateGitHubPagesLogin = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true })
+      });
+    }, 500);
+  });
 };
 
 export default function PortalScreen({ navigation }) {
@@ -235,17 +255,22 @@ export default function PortalScreen({ navigation }) {
     
     setLoading(true);
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phone: email,
-          email: email.includes('@') ? email : '',
-          password: password,
-        }),
-      });
+      let response;
+      if (isGitHubPages()) {
+        response = await simulateGitHubPagesLogin();
+      } else {
+        response = await fetch(`${getApiBaseUrl()}/api/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phone: email,
+            email: email.includes('@') ? email : '',
+            password: password,
+          }),
+        });
+      }
       
       const data = await response.json();
       
@@ -272,16 +297,21 @@ export default function PortalScreen({ navigation }) {
       
       setLoading(true);
       try {
-        const response = await fetch(`${getApiBaseUrl()}/api/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            phone: email,
-            password: password,
-          }),
-        });
+        let response;
+        if (isGitHubPages()) {
+          response = await simulateGitHubPagesLogin();
+        } else {
+          response = await fetch(`${getApiBaseUrl()}/api/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phone: email,
+              password: password,
+            }),
+          });
+        }
         
         const data = await response.json();
         
