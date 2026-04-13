@@ -3,6 +3,25 @@ import { StyleSheet, Text, View, TouchableOpacity, TextInput, Animated, Dimensio
 
 const { width, height } = Dimensions.get('window');
 
+// API 配置
+const getApiBaseUrl = () => {
+  // 如果是Web平台且通过ngrok访问，使用当前ngrok隧道URL
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname.includes('ngrok-free.dev') || hostname.includes('loca.lt')) {
+      // 使用当前窗口的origin（协议+主机名），与API在同一域名下
+      return window.location.origin;
+    }
+  }
+  
+  // 开发环境使用 localhost:8080
+  if (__DEV__) {
+    return 'http://localhost:8080';
+  }
+  // 生产环境使用相对路径
+  return '';
+};
+
 export default function PortalScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -216,7 +235,7 @@ export default function PortalScreen({ navigation }) {
     
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/register', {
+      const response = await fetch(`${getApiBaseUrl()}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -253,7 +272,7 @@ export default function PortalScreen({ navigation }) {
       
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:8080/api/login', {
+        const response = await fetch(`${getApiBaseUrl()}/api/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

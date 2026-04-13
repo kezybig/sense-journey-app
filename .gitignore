@@ -68,4 +68,4 @@ backend/*.db
 *.keystore
 
 # Metro bundler cache
-.metrobundler-cache
+.metrobundler-cachengrok.yml
