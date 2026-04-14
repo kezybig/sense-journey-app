@@ -1,14 +1,16 @@
 package models
 
 import (
+	"time"
+
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"time"
 )
 
 // User 用户模型
 type User struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
+	UID       uint64    `json:"uid" gorm:"uniqueIndex"`
 	Phone     string    `json:"phone" gorm:"uniqueIndex;size:20"`
 	Email     string    `json:"email" gorm:"uniqueIndex;size:100;default:null"`
 	Password  string    `json:"-" gorm:"size:100"`

@@ -36,7 +36,10 @@ const simulateGitHubPagesLogin = () => {
     setTimeout(() => {
       resolve({
         ok: true,
-        json: () => Promise.resolve({ success: true })
+        json: () => Promise.resolve({ 
+          success: true,
+          user: { id: 'K9jX7n2W', phone: 'demo', email: 'demo@example.com' }
+        })
       });
     }, 500);
   });
@@ -276,7 +279,13 @@ export default function PortalScreen({ navigation }) {
       
       if (response.ok) {
         Alert.alert('注册成功', '欢迎加入逃生舱！');
-        navigation.replace('LaunchPad');
+        // 提取用户ID
+        const userId = data.user?.id || (data.success ? 999 : null);
+        if (userId) {
+          navigation.replace('LaunchPad', { uid: userId });
+        } else {
+          navigation.replace('LaunchPad');
+        }
       } else {
         Alert.alert('注册失败', data.error || '请稍后重试');
       }
@@ -316,8 +325,13 @@ export default function PortalScreen({ navigation }) {
         const data = await response.json();
         
         if (response.ok) {
-          // 登录成功
-          navigation.replace('LaunchPad');
+          // 登录成功，提取用户ID
+          const userId = data.user?.id || (data.success ? 999 : null);
+          if (userId) {
+            navigation.replace('LaunchPad', { uid: userId });
+          } else {
+            navigation.replace('LaunchPad');
+          }
         } else {
           if (data.error === 'User not found') {
             setShowGuidanceModal(true);

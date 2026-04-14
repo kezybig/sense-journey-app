@@ -1,7 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Dimensions, Animated, Easing, PanResponder } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Animated, Easing, PanResponder, Alert, Platform } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+
+// API 配置
+const getApiBaseUrl = () => {
+  // 如果是Web平台且通过ngrok访问，使用当前ngrok隧道URL
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname.includes('ngrok-free.dev') || hostname.includes('loca.lt') || hostname.includes('github.io')) {
+      // 使用当前窗口的origin（协议+主机名），与API在同一域名下
+      return window.location.origin;
+    }
+  }
+  
+  // 开发环境使用 localhost:8080
+  if (__DEV__) {
+    return 'http://localhost:8080';
+  }
+  // 生产环境使用相对路径
+  return '';
+};
+
+// 检测是否为GitHub Pages环境
+const isGitHubPages = () => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return window.location.hostname.includes('github.io');
+  }
+  return false;
+};
 
 const Lever = ({ options, value, onValueChange, handleColor, label }) => {
   const trackHeight = 100; // leverTrack 的总高度
@@ -13,6 +40,7 @@ const Lever = ({ options, value, onValueChange, handleColor, label }) => {
   const [displayValue, setDisplayValue] = useState(value); // 用于显示的值
   const isDragging = useRef(new Animated.Value(0)).current; // 拖动状态动画
   const pulseAnim = useRef(new Animated.Value(1)).current; // 数值变化脉冲动画
+  const leverTrackBreathAnim = useRef(new Animated.Value(0)).current; // 轨道呼吸灯动画
 
   // 根据当前值设置手柄的初始位置
   useEffect(() => {
@@ -41,6 +69,28 @@ const Lever = ({ options, value, onValueChange, handleColor, label }) => {
       ]).start();
     }
   }, [displayValue]);
+
+  // 轨道呼吸灯动画
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(leverTrackBreathAnim, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(leverTrackBreathAnim, {
+          toValue: 0,
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, []);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -110,7 +160,12 @@ const Lever = ({ options, value, onValueChange, handleColor, label }) => {
   return (
     <View style={styles.leverGroup}>
       <Text style={styles.leverLabel}>{label}</Text>
-      <View style={styles.leverTrack}>
+      <Animated.View style={[styles.leverTrack, {
+        borderColor: leverTrackBreathAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['rgba(255, 255, 255, 0.1)', 'rgba(0, 206, 209, 0.6)']
+        })
+      }]}>
         <Animated.View
           style={[
             styles.leverHandle,
@@ -126,17 +181,46 @@ const Lever = ({ options, value, onValueChange, handleColor, label }) => {
             {displayValue}
           </Animated.Text>
         </Animated.View>
-      </View>
+      </Animated.View>
     </View>
   );
 };
 
-export default function LaunchPadScreen({ navigation }) {
+export default function LaunchPadScreen({ navigation, route }) {
   // 状态管理
   const [budget, setBudget] = useState('1500'); // 默认选中 1500
   const [time, setTime] = useState('1-2'); // 默认选中 1-2
   const [distance, setDistance] = useState('1-3H'); // 默认选中 1-3H
   const [moods, setMoods] = useState(['安静独处']); // 默认选中 Quiet，支持多选
+  const [transportType, setTransportType] = useState('公共交通'); // 出行类型：公共交通、自驾、高铁、飞机
+  const [uid, setUid] = useState(null); // 用户ID
+  
+  // 从路由参数中获取用户ID
+  useEffect(() => {
+    if (route?.params?.uid) {
+      setUid(route.params.uid);
+    } else {
+      // 如果没有uid，尝试从GitHub Pages环境中使用默认值
+      if (isGitHubPages()) {
+        setUid('K9jX7n2W'); // GitHub Pages环境使用默认用户ID（Hashid格式）
+      }
+    }
+  }, [route?.params?.uid]);
+  
+  // 出行类型选择处理
+  const handleTransportPress = () => {
+    const transportOptions = ['公共交通', '自驾', '高铁', '飞机'];
+    Alert.alert(
+      '选择出行类型',
+      '请选择您的出行方式',
+      transportOptions.map(option => ({
+        text: `${getTransportIcon(option)} ${option}`,
+        onPress: () => setTransportType(option),
+      })).concat([
+        { text: '取消', style: 'cancel' }
+      ])
+    );
+  };
   
   // 动画值
   const pedestalAnim = useRef(new Animated.Value(0)).current; // 控制台升起动画
@@ -146,6 +230,7 @@ export default function LaunchPadScreen({ navigation }) {
   const launchButtonAnim = useRef(new Animated.Value(0)).current; // 发射按钮入场动画
   const launchButtonPulseAnim = useRef(new Animated.Value(0)).current; // 发射按钮呼吸动画
   const launchButtonPressAnim = useRef(new Animated.Value(0)).current; // 发射按钮按下状态动画
+  const logoPulseAnim = useRef(new Animated.Value(0)).current; // Logo核心呼吸动画
   
   // 入场动画序列
   useEffect(() => {
@@ -183,22 +268,42 @@ export default function LaunchPadScreen({ navigation }) {
       ]),
     ]).start(() => {
       // 入场动画结束后，启动呼吸动画
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(launchButtonPulseAnim, {
-            toValue: 1,
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(launchButtonPulseAnim, {
-            toValue: 0,
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      Animated.parallel([
+        // 发射按钮呼吸动画
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(launchButtonPulseAnim, {
+              toValue: 1,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(launchButtonPulseAnim, {
+              toValue: 0,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+        ),
+        // Logo核心呼吸动画
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(logoPulseAnim, {
+              toValue: 1,
+              duration: 2000,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(logoPulseAnim, {
+              toValue: 0,
+              duration: 2000,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+        ),
+      ]).start();
     });
   }, []);
 
@@ -206,19 +311,62 @@ export default function LaunchPadScreen({ navigation }) {
   const budgetOptions = ['0', '500', '1000', '1500', '2000', '2500', '3000', '3000+'];
   const timeOptions = ['1-2', '3-5', '5-7', '7+'];
   const distanceOptions = ['1-3H', '3-5H', '5-7H', '7+H'];
+  const transportOptions = ['公共交通', '自驾', '高铁', '飞机'];
   const moodOptions = ['安静独处', '运动释放', '需要绿色', '想喝一杯', '冒险探索'];
   
-  const handleLaunch = () => {
-    // 模拟生成盲盒订单
-    if (!budget || !time || !distance || moods.length === 0) {
-      alert('请设置物理边界和情绪标定');
+  const handleLaunch = async () => {
+    // 验证输入
+    if (!budget || !time || !distance || !transportType || moods.length === 0) {
+      Alert.alert('请设置物理边界和情绪标定');
       return;
     }
     
-    // 模拟支付流程
-    setTimeout(() => {
-      navigation.navigate('Radar');
-    }, 1000);
+    // 检查用户ID
+    if (!uid) {
+      Alert.alert('用户未登录', '请先登录以保存您的旅程选择');
+      return;
+    }
+    
+    try {
+      // 验证uid是否存在（现在uid是Hashid字符串）
+      if (typeof uid !== 'string' || uid.trim() === '') {
+        Alert.alert('用户ID无效', '请重新登录');
+        return;
+      }
+      
+      // 构建请求数据
+      const journeyData = {
+        uid: uid,
+        budget: budget,
+        duration: time,
+        proximity: distance,
+        transport: transportType,
+        moods: moods
+      };
+      
+      // 调用API保存旅程选择
+      const response = await fetch(`${getApiBaseUrl()}/api/journey-selections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(journeyData),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // 保存成功，导航到雷达页面
+        Alert.alert('旅程选择已保存', '正在为您生成个性化推荐...');
+        setTimeout(() => {
+          navigation.navigate('Radar');
+        }, 1500);
+      } else {
+        Alert.alert('保存失败', data.error || '请稍后重试');
+      }
+    } catch (error) {
+      Alert.alert('网络错误', '无法连接到服务器，请检查网络连接');
+    }
   };
 
   const handleButtonPressIn = () => {
@@ -247,7 +395,7 @@ export default function LaunchPadScreen({ navigation }) {
         setMoods([...moods, option]);
       } else {
         // 超过3个时给予提示
-        alert('最多只能选择3个情绪标签');
+        Alert.alert('最多只能选择3个情绪标签');
       }
     }
   };
@@ -267,7 +415,20 @@ export default function LaunchPadScreen({ navigation }) {
         <View style={styles.singularityOuter}>
           <View style={styles.singularityMiddle}>
             <View style={styles.singularityInner}>
-              <View style={styles.singularityCore} />
+              <Animated.View style={[
+                styles.singularityCore, 
+                { 
+                  opacity: logoPulseAnim,
+                  transform: [
+                    { 
+                      scale: logoPulseAnim.interpolate({ 
+                        inputRange: [0, 1], 
+                        outputRange: [0.8, 1.2] 
+                      }) 
+                    }
+                  ]
+                }
+              ]} />
             </View>
           </View>
         </View>
@@ -289,6 +450,15 @@ export default function LaunchPadScreen({ navigation }) {
           <Text style={styles.statusLabel}>PROXIMITY</Text>
           <Text style={styles.statusValue}>{distance}</Text>
         </View>
+        <View style={styles.statusDivider} />
+        <TouchableOpacity 
+          style={styles.statusItem}
+          onPress={handleTransportPress}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.statusLabel}>TRANSPORT</Text>
+          <Text style={styles.statusValue}>{transportType ? getTransportIcon(transportType) : '---'}</Text>
+        </TouchableOpacity>
         <View style={styles.statusDivider} />
         <View style={styles.statusItem}>
           <Text style={styles.statusLabel}>MOODS</Text>
@@ -328,6 +498,15 @@ export default function LaunchPadScreen({ navigation }) {
               handleColor={styles.leverHandleGold}
               label="PROXIMITY"
             />
+
+            {/* 交通方式拉杆 */}
+            <Lever
+              options={transportOptions}
+              value={transportType}
+              onValueChange={setTransportType}
+              handleColor={styles.leverHandlePurple}
+              label="TRANSPORT"
+            />
           </Animated.View>
 
           {/* 情绪标定 (全息 Sigils) */}
@@ -356,13 +535,21 @@ export default function LaunchPadScreen({ navigation }) {
                 { scale: launchButtonAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) },
                 { scale: buttonPressScale }
               ],
+              borderColor: launchButtonPulseAnim.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: ['#00ced1', '#00ffff', '#00ced1']
+              }),
+              shadowColor: launchButtonPulseAnim.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: ['#00ced1', '#00ffff', '#00ced1']
+              }),
               shadowOpacity: launchButtonPulseAnim.interpolate({
                 inputRange: [0, 0.5, 1],
-                outputRange: [0.4, 0.8, 0.4]
+                outputRange: [0.6, 1.0, 0.6]
               }),
               shadowRadius: launchButtonPulseAnim.interpolate({
                 inputRange: [0, 0.5, 1],
-                outputRange: [10, 20, 10]
+                outputRange: [15, 30, 15]
               }),
             }
           ]}>
@@ -400,6 +587,17 @@ const getMoodIcon = (mood) => {
     case '想喝一杯': return '🍷'; // 极简酒杯
     case '冒险探索': return '🚀'; // 火箭
     default: return '✨';
+  }
+};
+
+// 出行类型图标映射
+const getTransportIcon = (transport) => {
+  switch (transport) {
+    case '公共交通': return '🚌'; // 公交车
+    case '自驾': return '🚗'; // 汽车
+    case '高铁': return '🚄'; // 高铁
+    case '飞机': return '✈️'; // 飞机
+    default: return '🚀';
   }
 };
 
@@ -544,13 +742,13 @@ const styles = StyleSheet.create({
   },
   leversContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     width: '100%',
     marginBottom: 30,
   },
   leverGroup: {
     alignItems: 'center',
-    width: '30%',
+    width: '22%',
   },
   leverLabel: {
     fontSize: 10,
@@ -605,6 +803,10 @@ const styles = StyleSheet.create({
   leverHandleGold: {
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
     shadowColor: '#ffd700',
+  },
+  leverHandlePurple: {
+    backgroundColor: 'rgba(147, 112, 219, 0.3)', // 中等紫罗兰色
+    shadowColor: '#9370db',
   },
   sigilsContainer: {
     flexDirection: 'row',
