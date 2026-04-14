@@ -43,7 +43,7 @@ func main() {
 		apiGroup.POST("/login", api.Login)
 		apiGroup.POST("/register", api.Register)
 		apiGroup.GET("/user/:phone", api.GetUserByPhone)
-		
+
 		// 旅程选择相关接口
 		apiGroup.POST("/journey-selections", api.CreateJourneySelection)
 		apiGroup.GET("/journey-selections/user/:uid", api.GetJourneySelectionsByUID)
