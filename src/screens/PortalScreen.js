@@ -38,7 +38,7 @@ const simulateGitHubPagesLogin = () => {
         ok: true,
         json: () => Promise.resolve({ 
           success: true,
-          user: { id: 'rM5U9RN2pa', phone: 'demo', email: 'demo@example.com' }
+          user: { uid: 'rM5U9RN2pa', phone: 'demo', email: 'demo@example.com' }
         })
       });
     }, 500);
@@ -280,7 +280,7 @@ export default function PortalScreen({ navigation }) {
       if (response.ok) {
         Alert.alert('注册成功', '欢迎加入逃生舱！');
         // 提取用户ID
-        const userId = data.user?.id || (data.success ? 999 : null);
+        const userId = data.user?.uid || (data.success ? 999 : null);
         if (userId) {
           navigation.replace('LaunchPad', { uid: userId });
         } else {
@@ -326,7 +326,7 @@ export default function PortalScreen({ navigation }) {
         
         if (response.ok) {
           // 登录成功，提取用户ID
-          const userId = data.user?.id || (data.success ? 999 : null);
+          const userId = data.user?.uid || (data.success ? 999 : null);
           if (userId) {
             navigation.replace('LaunchPad', { uid: userId });
           } else {

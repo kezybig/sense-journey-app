@@ -187,6 +187,7 @@ const Lever = ({ options, value, onValueChange, handleColor, label }) => {
 };
 
 export default function LaunchPadScreen({ navigation, route }) {
+  console.log('LaunchPadScreen rendered', { routeParams: route?.params });
   // 状态管理
   const [budget, setBudget] = useState('1500'); // 默认选中 1500
   const [time, setTime] = useState('1-2'); // 默认选中 1-2
@@ -319,6 +320,7 @@ export default function LaunchPadScreen({ navigation, route }) {
   const moodOptions = ['安静独处', '运动释放', '需要绿色', '想喝一杯', '冒险探索'];
   
   const handleLaunch = async () => {
+    console.log('=== HANDLE LAUNCH FUNCTION CALLED ===');
     console.log('handleLaunch 被调用', { uid, budget, time, distance, transportType, moods });
     // 验证输入
     if (!budget || !time || !distance || !transportType || moods.length === 0) {
@@ -379,6 +381,7 @@ export default function LaunchPadScreen({ navigation, route }) {
   };
 
   const handleButtonPressIn = () => {
+    console.log('=== BUTTON PRESS IN ===');
     Animated.timing(launchButtonPressAnim, {
       toValue: 1,
       duration: 100,

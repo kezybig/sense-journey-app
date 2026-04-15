@@ -73,7 +73,7 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",
 		"user": gin.H{
-			"id":    hashid,
+			"uid":   hashid,
 			"phone": user.Phone,
 			"email": user.Email,
 		},
@@ -126,7 +126,7 @@ func Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Registration successful",
 		"user": gin.H{
-			"id":    hashid,
+			"uid":   hashid,
 			"phone": user.Phone,
 			"email": user.Email,
 		},
@@ -156,7 +156,7 @@ func GetUserByPhone(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
-			"id":    hashid,
+			"uid":   hashid,
 			"phone": user.Phone,
 			"email": user.Email,
 		},
