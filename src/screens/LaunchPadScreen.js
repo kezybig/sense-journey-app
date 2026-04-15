@@ -198,11 +198,15 @@ export default function LaunchPadScreen({ navigation, route }) {
   // 从路由参数中获取用户ID
   useEffect(() => {
     if (route?.params?.uid) {
+      console.log('从路由参数获取uid:', route.params.uid);
       setUid(route.params.uid);
     } else {
       // 如果没有uid，尝试从GitHub Pages环境中使用默认值
       if (isGitHubPages()) {
-        setUid('K9jX7n2W'); // GitHub Pages环境使用默认用户ID（Hashid格式）
+        console.log('GitHub Pages环境，使用默认uid: rM5U9RN2pa');
+        setUid('rM5U9RN2pa'); // GitHub Pages环境使用默认用户ID（Hashid格式）
+      } else {
+        console.log('没有uid，设置为null');
       }
     }
   }, [route?.params?.uid]);
@@ -315,6 +319,7 @@ export default function LaunchPadScreen({ navigation, route }) {
   const moodOptions = ['安静独处', '运动释放', '需要绿色', '想喝一杯', '冒险探索'];
   
   const handleLaunch = async () => {
+    console.log('handleLaunch 被调用', { uid, budget, time, distance, transportType, moods });
     // 验证输入
     if (!budget || !time || !distance || !transportType || moods.length === 0) {
       Alert.alert('请设置物理边界和情绪标定');
@@ -323,6 +328,7 @@ export default function LaunchPadScreen({ navigation, route }) {
     
     // 检查用户ID
     if (!uid) {
+      console.log('uid 为空，阻止请求');
       Alert.alert('用户未登录', '请先登录以保存您的旅程选择');
       return;
     }
@@ -343,6 +349,8 @@ export default function LaunchPadScreen({ navigation, route }) {
         transport: transportType,
         moods: moods
       };
+      console.log('发送旅程数据:', journeyData);
+      console.log('API基础URL:', getApiBaseUrl());
       
       // 调用API保存旅程选择
       const response = await fetch(`${getApiBaseUrl()}/api/journey-selections`, {
@@ -354,12 +362,13 @@ export default function LaunchPadScreen({ navigation, route }) {
       });
       
       const data = await response.json();
+      console.log('API响应:', { status: response.status, ok: response.ok, data });
       
       if (response.ok) {
         // 保存成功，导航到雷达页面
         Alert.alert('旅程选择已保存', '正在为您生成个性化推荐...');
         setTimeout(() => {
-          navigation.navigate('Radar');
+          navigation.navigate('Radar', { uid: uid });
         }, 1500);
       } else {
         Alert.alert('保存失败', data.error || '请稍后重试');

@@ -171,6 +171,7 @@ type JourneySelectionRequest struct {
 	Proximity string   `json:"proximity" binding:"required"`
 	Transport string   `json:"transport" binding:"required"`
 	Moods     []string `json:"moods" binding:"required"`
+	Status    uint     `json:"status"` // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃，可选，默认1
 }
 
 // CreateJourneySelection 创建旅程选择
@@ -200,6 +201,12 @@ func CreateJourneySelection(c *gin.Context) {
 		return
 	}
 
+	// 设置状态，如果未提供则使用默认值1（规划完成）
+	status := req.Status
+	if status == 0 {
+		status = 1
+	}
+
 	// 创建旅程选择
 	selection := &models.JourneySelection{
 		UID:       user.UID,
@@ -208,6 +215,7 @@ func CreateJourneySelection(c *gin.Context) {
 		Proximity: req.Proximity,
 		Transport: req.Transport,
 		Moods:     req.Moods,
+		Status:    status,
 	}
 
 	// 保存到数据库
@@ -226,6 +234,7 @@ func CreateJourneySelection(c *gin.Context) {
 			"proximity":  selection.Proximity,
 			"transport":  selection.Transport,
 			"moods":      selection.Moods,
+			"status":     selection.Status,
 			"created_at": selection.CreatedAt,
 		},
 	})
@@ -269,6 +278,7 @@ func GetJourneySelectionsByUID(c *gin.Context) {
 		Proximity string    `json:"proximity"`
 		Transport string    `json:"transport"`
 		Moods     []string  `json:"moods"`
+		Status    uint      `json:"status"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 
@@ -282,6 +292,7 @@ func GetJourneySelectionsByUID(c *gin.Context) {
 			Proximity: selection.Proximity,
 			Transport: selection.Transport,
 			Moods:     selection.Moods,
+			Status:    selection.Status,
 			CreatedAt: selection.CreatedAt,
 		})
 	}
@@ -333,6 +344,7 @@ func GetLatestJourneySelectionByUID(c *gin.Context) {
 		"proximity":  selection.Proximity,
 		"transport":  selection.Transport,
 		"moods":      selection.Moods,
+		"status":     selection.Status,
 		"created_at": selection.CreatedAt,
 	}
 
@@ -360,5 +372,58 @@ func DeleteJourneySelection(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Journey selection deleted successfully",
+	})
+}
+
+// UpdateJourneySelectionStatusRequest 更新旅程选择状态请求结构
+type UpdateJourneySelectionStatusRequest struct {
+	Status uint `json:"status" binding:"required,min=1,max=4"` // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃
+}
+
+// UpdateJourneySelectionStatus 更新旅程选择状态
+func UpdateJourneySelectionStatus(c *gin.Context) {
+	id := c.Param("id")
+
+	// 验证ID参数
+	var selectionID uint
+	if _, err := fmt.Sscanf(id, "%d", &selectionID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid selection ID"})
+		return
+	}
+
+	var req UpdateJourneySelectionStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	// 验证状态值是否在有效范围内（1-4）
+	if req.Status < 1 || req.Status > 4 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Status must be between 1 and 4"})
+		return
+	}
+
+	// 检查旅程选择是否存在
+	var selection models.JourneySelection
+	err := config.DB.First(&selection, selectionID).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Journey selection not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve journey selection: " + err.Error()})
+		return
+	}
+
+	// 更新状态
+	err = models.UpdateJourneySelectionStatus(config.DB, selectionID, req.Status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update journey selection status: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Journey selection status updated successfully",
+		"status":  req.Status,
 	})
 }

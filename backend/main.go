@@ -49,6 +49,7 @@ func main() {
 		apiGroup.GET("/journey-selections/user/:uid", api.GetJourneySelectionsByUID)
 		apiGroup.GET("/journey-selections/latest/:uid", api.GetLatestJourneySelectionByUID)
 		apiGroup.DELETE("/journey-selections/:id", api.DeleteJourneySelection)
+		apiGroup.PUT("/journey-selections/:id/status", api.UpdateJourneySelectionStatus)
 	}
 
 	// 根路由 - 提供前端应用入口

@@ -38,7 +38,7 @@ const simulateGitHubPagesLogin = () => {
         ok: true,
         json: () => Promise.resolve({ 
           success: true,
-          user: { id: 'K9jX7n2W', phone: 'demo', email: 'demo@example.com' }
+          user: { id: 'rM5U9RN2pa', phone: 'demo', email: 'demo@example.com' }
         })
       });
     }, 500);

@@ -6,6 +6,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// 旅程选择状态常量
+const (
+	StatusPlanningCompleted uint = 1 // 规划完成
+	StatusInProgress        uint = 2 // 进行中
+	StatusEnded             uint = 3 // 已结束
+	StatusAbandoned         uint = 4 // 已放弃
+)
+
 // JourneySelection 用户旅程选择模型
 type JourneySelection struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
@@ -15,6 +23,7 @@ type JourneySelection struct {
 	Proximity string    `json:"proximity" gorm:"size:20;not null"`      // 距离范围，如："1-3H", "3-5H"
 	Transport string    `json:"transport" gorm:"size:50;not null"`      // 交通方式，如："公共交通", "自驾", "高铁", "飞机"
 	Moods     []string  `json:"moods" gorm:"type:json;serializer:json"` // 情绪选择，JSON数组，如：["安静独处", "人文探访"]
+	Status    uint      `json:"status" gorm:"default:1"`                // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
@@ -70,4 +79,9 @@ func FindLatestJourneySelectionByUID(db *gorm.DB, uid uint64) (*JourneySelection
 // DeleteByID 根据ID删除旅程选择
 func DeleteJourneySelectionByID(db *gorm.DB, id uint) error {
 	return db.Delete(&JourneySelection{}, id).Error
+}
+
+// UpdateStatus 更新旅程选择状态
+func UpdateJourneySelectionStatus(db *gorm.DB, id uint, status uint) error {
+	return db.Model(&JourneySelection{}).Where("id = ?", id).Update("status", status).Error
 }

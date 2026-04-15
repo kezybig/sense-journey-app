@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Platform } from 'react-native';
 
-export default function RadarScreen({ navigation }) {
+export default function RadarScreen({ navigation, route }) {
   // 状态管理
   const [countdown, setCountdown] = useState(86400); // 24小时倒计时
   const [showSOS, setShowSOS] = useState(false);
   const [journeyPhase, setJourneyPhase] = useState('preparing'); // preparing, ongoing, completed
+  const uid = route.params?.uid;
   
   // 动画值
   const pulseAnim = new Animated.Value(1);
@@ -65,6 +66,7 @@ export default function RadarScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <Text style={styles.title}>动态雷达</Text>
         <Text style={styles.subtitle}>行程追踪中</Text>
+        {uid && <Text style={styles.uidText}>用户：{uid}</Text>}
         
         {/* 雷达区域 */}
         <View style={styles.radarContainer}>
@@ -185,7 +187,13 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 40,
+    marginBottom: 20,
+  },
+  uidText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.4)',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   radarContainer: {
     alignItems: 'center',
