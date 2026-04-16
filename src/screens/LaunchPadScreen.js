@@ -1,10 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Animated, Easing, PanResponder, Alert, Platform } from 'react-native';
 
+import { 
+  Budget, Duration, Proximity, Transport, Mood, 
+  DefaultValues,
+  BudgetOptions, DurationOptions, ProximityOptions, TransportOptions, MoodOptions 
+} from '../constants/enums';
+
 const { width, height } = Dimensions.get('window');
 
 // API 配置
 const getApiBaseUrl = () => {
+  // 开发环境始终使用 localhost:8081
+  if (__DEV__) {
+    return 'http://localhost:8081';
+  }
+  
   // 如果是Web平台且通过ngrok访问，使用当前ngrok隧道URL
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const hostname = window.location.hostname;
@@ -14,10 +25,6 @@ const getApiBaseUrl = () => {
     }
   }
   
-  // 开发环境使用 localhost:8080
-  if (__DEV__) {
-    return 'http://localhost:8080';
-  }
   // 生产环境使用相对路径
   return '';
 };
@@ -187,14 +194,15 @@ const Lever = ({ options, value, onValueChange, handleColor, label }) => {
 };
 
 export default function LaunchPadScreen({ navigation, route }) {
-  console.log('LaunchPadScreen rendered', { routeParams: route?.params });
+  console.warn('🔄 LaunchPadScreen rendered', { routeParams: route?.params });
   // 状态管理
-  const [budget, setBudget] = useState('1500'); // 默认选中 1500
-  const [time, setTime] = useState('1-2'); // 默认选中 1-2
-  const [distance, setDistance] = useState('1-3H'); // 默认选中 1-3H
-  const [moods, setMoods] = useState(['安静独处']); // 默认选中 Quiet，支持多选
-  const [transportType, setTransportType] = useState('公共交通'); // 出行类型：公共交通、自驾、高铁、飞机
+  const [budget, setBudget] = useState(DefaultValues.ZERO); // 默认选中 1500
+  const [time, setTime] = useState(DefaultValues.DURATION); // 默认选中 1-2
+  const [distance, setDistance] = useState(DefaultValues.PROXIMITY); // 默认选中 1-3H
+  const [moods, setMoods] = useState(DefaultValues.MOODS); // 默认选中 Quiet，支持多选
+  const [transportType, setTransportType] = useState(DefaultValues.TRANSPORT); // 出行类型：公共交通、自驾、高铁、飞机
   const [uid, setUid] = useState(null); // 用户ID
+  const [isLoading, setIsLoading] = useState(false); // 加载状态
   
   // 从路由参数中获取用户ID
   useEffect(() => {
@@ -206,6 +214,10 @@ export default function LaunchPadScreen({ navigation, route }) {
       if (isGitHubPages()) {
         console.log('GitHub Pages环境，使用默认uid: rM5U9RN2pa');
         setUid('rM5U9RN2pa'); // GitHub Pages环境使用默认用户ID（Hashid格式）
+      } else if (__DEV__) {
+        // 开发环境使用默认uid，便于测试
+        console.log('开发环境，使用默认uid: rM5U9RN2pa');
+        setUid('rM5U9RN2pa');
       } else {
         console.log('没有uid，设置为null');
       }
@@ -214,7 +226,6 @@ export default function LaunchPadScreen({ navigation, route }) {
   
   // 出行类型选择处理
   const handleTransportPress = () => {
-    const transportOptions = ['公共交通', '自驾', '高铁', '飞机'];
     Alert.alert(
       '选择出行类型',
       '请选择您的出行方式',
@@ -313,14 +324,14 @@ export default function LaunchPadScreen({ navigation, route }) {
   }, []);
 
   // 选项数据
-  const budgetOptions = ['0', '500', '1000', '1500', '2000', '2500', '3000', '3000+'];
-  const timeOptions = ['1-2', '3-5', '5-7', '7+'];
-  const distanceOptions = ['1-3H', '3-5H', '5-7H', '7+H'];
-  const transportOptions = ['公共交通', '自驾', '高铁', '飞机'];
-  const moodOptions = ['安静独处', '运动释放', '需要绿色', '想喝一杯', '冒险探索'];
+  const budgetOptions = BudgetOptions;
+  const timeOptions = DurationOptions;
+  const distanceOptions = ProximityOptions;
+  const transportOptions = TransportOptions;
+  const moodOptions = MoodOptions;
   
   const handleLaunch = async () => {
-    console.log('=== HANDLE LAUNCH FUNCTION CALLED ===');
+    console.warn('🚀 === HANDLE LAUNCH FUNCTION CALLED ===');
     console.log('handleLaunch 被调用', { uid, budget, time, distance, transportType, moods });
     // 验证输入
     if (!budget || !time || !distance || !transportType || moods.length === 0) {
@@ -335,13 +346,16 @@ export default function LaunchPadScreen({ navigation, route }) {
       return;
     }
     
+    // 验证uid是否存在（现在uid是Hashid字符串）
+    if (typeof uid !== 'string' || uid.trim() === '') {
+      Alert.alert('用户ID无效', '请重新登录');
+      return;
+    }
+    
+    // 设置加载状态
+    setIsLoading(true);
+    
     try {
-      // 验证uid是否存在（现在uid是Hashid字符串）
-      if (typeof uid !== 'string' || uid.trim() === '') {
-        Alert.alert('用户ID无效', '请重新登录');
-        return;
-      }
-      
       // 构建请求数据
       const journeyData = {
         uid: uid,
@@ -351,11 +365,13 @@ export default function LaunchPadScreen({ navigation, route }) {
         transport: transportType,
         moods: moods
       };
+      const apiUrl = `${getApiBaseUrl()}/api/journey-selections`;
       console.log('发送旅程数据:', journeyData);
       console.log('API基础URL:', getApiBaseUrl());
+      console.log('完整请求URL:', apiUrl);
       
       // 调用API保存旅程选择
-      const response = await fetch(`${getApiBaseUrl()}/api/journey-selections`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -363,8 +379,21 @@ export default function LaunchPadScreen({ navigation, route }) {
         body: JSON.stringify(journeyData),
       });
       
-      const data = await response.json();
-      console.log('API响应:', { status: response.status, ok: response.ok, data });
+      console.log('响应状态:', response.status, response.statusText);
+      console.log('响应头:', Object.fromEntries(response.headers.entries()));
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log('API响应JSON:', data);
+      } catch (jsonError) {
+        const text = await response.text();
+        console.error('响应不是有效的JSON:', text);
+        console.error('JSON解析错误:', jsonError);
+        throw new Error(`服务器返回无效JSON: ${text.substring(0, 100)}`);
+      }
+      
+      console.log('API响应详情:', { status: response.status, ok: response.ok, data });
       
       if (response.ok) {
         // 保存成功，导航到雷达页面
@@ -373,10 +402,22 @@ export default function LaunchPadScreen({ navigation, route }) {
           navigation.navigate('Radar', { uid: uid });
         }, 1500);
       } else {
-        Alert.alert('保存失败', data.error || '请稍后重试');
+        const errorMsg = data.error || data.message || `服务器错误: ${response.status}`;
+        console.error('API请求失败:', errorMsg, data);
+        Alert.alert('保存失败', errorMsg);
       }
     } catch (error) {
-      Alert.alert('网络错误', '无法连接到服务器，请检查网络连接');
+      console.error('handleLaunch捕获到错误:', error);
+      console.error('错误详情:', error.message, error.stack);
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        Alert.alert('网络错误', `无法连接到服务器: ${getApiBaseUrl()}\n请检查后端是否运行在localhost:8081`);
+      } else if (error.message.includes('invalid JSON')) {
+        Alert.alert('服务器响应异常', '服务器返回了非JSON格式的响应，请检查后端日志');
+      } else {
+        Alert.alert('请求失败', error.message || '未知错误，请查看控制台');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -568,11 +609,14 @@ export default function LaunchPadScreen({ navigation, route }) {
             <TouchableOpacity 
               style={styles.launchButton} 
               onPress={handleLaunch}
-              onPressIn={handleButtonPressIn}
-              onPressOut={handleButtonPressOut}
+              onPressIn={isLoading ? undefined : handleButtonPressIn}
+              onPressOut={isLoading ? undefined : handleButtonPressOut}
+              disabled={isLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.launchButtonText}>LAUNCH ESCAPE</Text>
+              <Text style={styles.launchButtonText}>
+                {isLoading ? '保存中...' : 'LAUNCH ESCAPE'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -593,11 +637,11 @@ export default function LaunchPadScreen({ navigation, route }) {
 // 情绪图标映射
 const getMoodIcon = (mood) => {
   switch (mood) {
-    case '安静独处': return '🌳'; // 孤树
-    case '运动释放': return '🏃‍♂️'; // 跑步运动
-    case '需要绿色': return '🌿'; // 绿色植物
-    case '想喝一杯': return '🍷'; // 极简酒杯
-    case '冒险探索': return '🚀'; // 火箭
+    case Mood.QUIET_ALONE: return '🌳'; // 孤树
+    case Mood.EXERCISE: return '🏃‍♂️'; // 跑步运动
+    case Mood.NEED_GREEN: return '🌿'; // 绿色植物
+    case Mood.WANT_DRINK: return '🍷'; // 极简酒杯
+    case Mood.ADVENTURE_EXPLORE: return '🚀'; // 火箭
     default: return '✨';
   }
 };
@@ -605,10 +649,10 @@ const getMoodIcon = (mood) => {
 // 出行类型图标映射
 const getTransportIcon = (transport) => {
   switch (transport) {
-    case '公共交通': return '🚌'; // 公交车
-    case '自驾': return '🚗'; // 汽车
-    case '高铁': return '🚄'; // 高铁
-    case '飞机': return '✈️'; // 飞机
+    case Transport.PUBLIC: return '🚌'; // 公交车
+    case Transport.SELF_DRIVE: return '🚗'; // 汽车
+    case Transport.HIGH_SPEED: return '🚄'; // 高铁
+    case Transport.FLIGHT: return '✈️'; // 飞机
     default: return '🚀';
   }
 };

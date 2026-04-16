@@ -165,13 +165,13 @@ func GetUserByPhone(c *gin.Context) {
 
 // JourneySelectionRequest 旅程选择请求结构
 type JourneySelectionRequest struct {
-	UID       string   `json:"uid" binding:"required"`
-	Budget    string   `json:"budget" binding:"required"`
-	Duration  string   `json:"duration" binding:"required"`
-	Proximity string   `json:"proximity" binding:"required"`
-	Transport string   `json:"transport" binding:"required"`
-	Moods     []string `json:"moods" binding:"required"`
-	Status    uint     `json:"status"` // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃，可选，默认1
+	UID       string           `json:"uid" binding:"required"`
+	Budget    models.Budget    `json:"budget" binding:"required"`
+	Duration  models.Duration  `json:"duration" binding:"required"`
+	Proximity models.Proximity `json:"proximity" binding:"required"`
+	Transport models.Transport `json:"transport" binding:"required"`
+	Moods     models.MoodList  `json:"moods" binding:"required"`
+	Status    uint             `json:"status"` // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃，可选，默认1
 }
 
 // CreateJourneySelection 创建旅程选择
@@ -224,16 +224,22 @@ func CreateJourneySelection(c *gin.Context) {
 		return
 	}
 
+	// 将Mood枚举数组转换为字符串数组
+	moodStrings := make([]string, len(selection.Moods))
+	for i, mood := range selection.Moods {
+		moodStrings[i] = mood.String()
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Journey selection created successfully",
 		"selection": gin.H{
 			"id":         selection.ID,
 			"uid":        req.UID, // 返回前端传递的Hashid
-			"budget":     selection.Budget,
-			"duration":   selection.Duration,
-			"proximity":  selection.Proximity,
-			"transport":  selection.Transport,
-			"moods":      selection.Moods,
+			"budget":     selection.Budget.String(),
+			"duration":   selection.Duration.String(),
+			"proximity":  selection.Proximity.String(),
+			"transport":  selection.Transport.String(),
+			"moods":      moodStrings,
 			"status":     selection.Status,
 			"created_at": selection.CreatedAt,
 		},
@@ -284,14 +290,20 @@ func GetJourneySelectionsByUID(c *gin.Context) {
 
 	var responseSelections []selectionResponse
 	for _, selection := range selections {
+		// 将Mood枚举数组转换为字符串数组
+		moodStrings := make([]string, len(selection.Moods))
+		for i, mood := range selection.Moods {
+			moodStrings[i] = mood.String()
+		}
+
 		responseSelections = append(responseSelections, selectionResponse{
 			ID:        selection.ID,
 			UID:       uidHashid, // 返回Hashid而不是数字ID
-			Budget:    selection.Budget,
-			Duration:  selection.Duration,
-			Proximity: selection.Proximity,
-			Transport: selection.Transport,
-			Moods:     selection.Moods,
+			Budget:    selection.Budget.String(),
+			Duration:  selection.Duration.String(),
+			Proximity: selection.Proximity.String(),
+			Transport: selection.Transport.String(),
+			Moods:     moodStrings,
 			Status:    selection.Status,
 			CreatedAt: selection.CreatedAt,
 		})
@@ -336,14 +348,20 @@ func GetLatestJourneySelectionByUID(c *gin.Context) {
 	}
 
 	// 创建响应结构，将UID替换为Hashid
+	// 将Mood枚举数组转换为字符串数组
+	moodStrings := make([]string, len(selection.Moods))
+	for i, mood := range selection.Moods {
+		moodStrings[i] = mood.String()
+	}
+
 	responseSelection := gin.H{
 		"id":         selection.ID,
 		"uid":        uidHashid, // 返回Hashid而不是数字ID
-		"budget":     selection.Budget,
-		"duration":   selection.Duration,
-		"proximity":  selection.Proximity,
-		"transport":  selection.Transport,
-		"moods":      selection.Moods,
+		"budget":     selection.Budget.String(),
+		"duration":   selection.Duration.String(),
+		"proximity":  selection.Proximity.String(),
+		"transport":  selection.Transport.String(),
+		"moods":      moodStrings,
 		"status":     selection.Status,
 		"created_at": selection.CreatedAt,
 	}

@@ -17,13 +17,13 @@ const (
 // JourneySelection 用户旅程选择模型
 type JourneySelection struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
-	UID       uint64    `json:"uid" gorm:"index;not null"`              // 关联用户UID
-	Budget    string    `json:"budget" gorm:"size:20;not null"`         // 预算，如："1500", "3000"
-	Duration  string    `json:"duration" gorm:"size:20;not null"`       // 持续时间范围，如："1-2", "2-4"
-	Proximity string    `json:"proximity" gorm:"size:20;not null"`      // 距离范围，如："1-3H", "3-5H"
-	Transport string    `json:"transport" gorm:"size:50;not null"`      // 交通方式，如："公共交通", "自驾", "高铁", "飞机"
-	Moods     []string  `json:"moods" gorm:"type:json;serializer:json"` // 情绪选择，JSON数组，如：["安静独处", "人文探访"]
-	Status    uint      `json:"status" gorm:"default:1"`                // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃
+	UID       uint64    `json:"uid" gorm:"index;not null"`                // 关联用户UID
+	Budget    Budget    `json:"budget" gorm:"type:MEDIUMINT;not null"`    // 预算枚举
+	Duration  Duration  `json:"duration" gorm:"type:MEDIUMINT;not null"`  // 持续时间枚举
+	Proximity Proximity `json:"proximity" gorm:"type:MEDIUMINT;not null"` // 距离范围枚举
+	Transport Transport `json:"transport" gorm:"type:BIGINT;not null"`    // 交通方式枚举
+	Moods     MoodList  `json:"moods" gorm:"type:json"`                   // 情绪选择枚举数组
+	Status    uint      `json:"status" gorm:"default:1"`                  // 状态：1-规划完成，2-进行中，3-已结束，4-已放弃
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
